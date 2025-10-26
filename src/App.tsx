@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { SVGProps, CSSProperties, HTMLAttributes, ChangeEvent } from "react";
 import { motion, Reorder } from "framer-motion";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
@@ -98,7 +99,7 @@ const ColorSwatches = [
 ];
 const Acts = /** @type {Act[]} */ ["ACT1", "ACT2", "ACT3"];
 
-const IconGrip = (props) => (
+const IconGrip = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -115,7 +116,7 @@ const IconGrip = (props) => (
     <circle cx="15" cy="17" r="1" />
   </svg>
 );
-const IconTrash = (props) => (
+const IconTrash = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -142,7 +143,7 @@ const IconTrash = (props) => (
     />
   </svg>
 );
-const IconPlus = (props) => (
+const IconPlus = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -159,7 +160,7 @@ const IconPlus = (props) => (
     />
   </svg>
 );
-const IconDownload = (props) => (
+const IconDownload = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -188,7 +189,7 @@ const IconDownload = (props) => (
     />
   </svg>
 );
-const IconUpload = (props) => (
+const IconUpload = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -217,7 +218,7 @@ const IconUpload = (props) => (
     />
   </svg>
 );
-const IconDuplicate = (props) => (
+const IconDuplicate = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -248,7 +249,7 @@ const IconDuplicate = (props) => (
     />
   </svg>
 );
-const IconTimeline = (props) => (
+const IconTimeline = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -268,7 +269,7 @@ const IconTimeline = (props) => (
     <circle cx="17" cy="12" r="2" />
   </svg>
 );
-const IconKanban = (props) => (
+const IconKanban = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -282,7 +283,7 @@ const IconKanban = (props) => (
     <rect x="15" y="4" width="6" height="16" rx="2" />
   </svg>
 );
-const IconList = (props) => (
+const IconList = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -299,7 +300,7 @@ const IconList = (props) => (
     />
   </svg>
 );
-const IconChevron = (props) => (
+const IconChevron = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     width="18"
@@ -882,30 +883,15 @@ export default function App() {
               ))}
             </select>
             <div className="flex gap-2 sm:ml-auto">
-              <button
-                onClick={() => setView("KANBAN")}
-                className={`rounded-xl border px-3 py-2 shadow-sm ${
-                  view === "KANBAN" ? "bg-gray-50" : ""
-                }`}
-              >
-                カンバン
-              </button>
-              <button
-                onClick={() => setView("LIST")}
-                className={`rounded-xl border px-3 py-2 shadow-sm ${
-                  view === "LIST" ? "bg-gray-50" : ""
-                }`}
-              >
-                リスト
-              </button>
-              <button
-                onClick={() => setView("TIMELINE")}
-                className={`rounded-xl border px-3 py-2 shadow-sm ${
-                  view === "TIMELINE" ? "bg-gray-50" : ""
-                }`}
-              >
-                タイムライン
-              </button>
+              <button onClick={() => setView("KANBAN")} className={`rounded-xl border px-3 py-2 shadow-sm ${view === "KANBAN" ? "bg-gray-50" : ""}`}>
+<IconKanban style={{ marginRight: 6 }} /> カンバン
+</button>
+              <button onClick={() => setView("LIST")} className={`rounded-xl border px-3 py-2 shadow-sm ${view === "LIST" ? "bg-gray-50" : ""}`}>
+<IconList style={{ marginRight: 6 }} /> リスト
+</button>
+              <button onClick={() => setView("TIMELINE")} className={`rounded-xl border px-3 py-2 shadow-sm ${view === "TIMELINE" ? "bg-gray-50" : ""}`}>
+<IconTimeline style={{ marginRight: 6 }} /> タイムライン
+</button>
             </div>
             <div className="text-sm text-gray-500 sm:ml-auto">
               合計 {scenes.length} シーン / 想定 {totalMinutes} 分
