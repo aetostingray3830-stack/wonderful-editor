@@ -389,7 +389,7 @@ function SceneCard({
   const update = (patch: Partial<Scene>) => onChange({ ...scene, ...patch });
 
   return (
-    <motion.div layout="position" className="group rounded-2xl border shadow-sm bg-white/80 backdrop-blur p-4 sm:p-5"
+    <motion.div className="group rounded-2xl border shadow-sm bg-white/80 backdrop-blur p-4 sm:p-5"
       style={{
         borderColor: "#e5e7eb",
         boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
@@ -691,7 +691,7 @@ function MemoCard({ memo, onChange, onDelete }: MemoCardProps) {
   }, [open]);
 
   return (
-    <motion.div layout="position" className="rounded-2xl border bg-white/80 p-3 shadow-sm">
+    <motion.div className="rounded-2xl border bg-white/80 p-3 shadow-sm">
       <div className="flex items-center gap-2">
         <button
           className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-gray-50"
