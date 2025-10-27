@@ -1,23 +1,44 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SVGProps, CSSProperties, HTMLAttributes, ChangeEvent } from "react";
+import type {
+  SVGProps,
+  CSSProperties,
+  HTMLAttributes,
+  ChangeEvent,
+} from "react";
 import { motion, Reorder } from "framer-motion";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
-/** @typedef {"ACT1"|"ACT2"|"ACT3"} Act */
-/** @typedef {{ id:string; title:string; summary:string; tags:string[]; characters:string[]; color:string; duration:number; notes:string; act:Act }} Scene */
-/** @typedef {{ id:string; title:string; body:string; open:boolean }} Memo */
+/* ========= Types & Const ========= */
+export const Acts = ["ACT1", "ACT2", "ACT3"] as const;
+export type Act = (typeof Acts)[number];
 
-const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+export type Scene = {
+  id: string;
+  title: string;
+  summary: string;
+  tags: string[];
+  characters: string[];
+  color: string;
+  duration: number;
+  notes: string;
+  act: Act;
+};
+
+export type MemoT = { id: string; title: string; body: string; open: boolean };
+
+const uid = (): string =>
+  Math.random().toString(36).slice(2) + Date.now().toString(36);
+
 const STORAGE_KEY = "scenario-editor-v7";
 const MEMO_KEY = "scenario-memos-v1";
 
-const DEFAULT_SCENES = /** @type {Scene[]} */ [
+const DEFAULT_SCENES: Scene[] = [
   {
     id: uid(),
     title: "招待状",
     summary:
-      "**館の主**からの手紙が届く。\n\n- 行くかどうか迷う\n- 兄に相談する",
+      "**館の主**からの手紙が届く.\n\n- 行くかどうか迷う\n- 兄に相談する",
     tags: ["導入"],
     characters: ["主人公", "兄"],
     color: "#eef2ff",
@@ -72,7 +93,7 @@ const DEFAULT_SCENES = /** @type {Scene[]} */ [
   },
 ];
 
-const DEFAULT_MEMOS = /** @type {Memo[]} */ [
+const DEFAULT_MEMOS: MemoT[] = [
   {
     id: uid(),
     title: "制作TODO",
@@ -97,8 +118,27 @@ const ColorSwatches = [
   "#fff7ed",
   "#f4f4f5",
 ];
-const Acts = /** @type {Act[]} */ ["ACT1", "ACT2", "ACT3"];
 
+/* ========= Markdown ========= */
+type MarkdownViewProps = { text: string; bg: string };
+function MarkdownView({ text, bg }: MarkdownViewProps) {
+  const html = useMemo<string>(() => {
+    try {
+      return DOMPurify.sanitize(marked.parse(text || "") as string);
+    } catch {
+      return "";
+    }
+  }, [text]);
+  return (
+    <div
+      className="prose prose-sm max-w-none break-words rounded-md p-3 sm:p-4"
+      style={{ background: bg } as CSSProperties}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+/* ========= Icons ========= */
 const IconGrip = (props: SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
@@ -132,12 +172,12 @@ const IconTrash = (props: SVGProps<SVGSVGElement>) => (
       strokeLinecap="round"
     />
     <path
-      d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0  1 2 2v2"
+      d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
       stroke="currentColor"
       strokeWidth="2"
     />
     <path
-      d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0  0 0 2-2l1-14"
+      d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"
       stroke="currentColor"
       strokeWidth="2"
     />
@@ -320,40 +360,33 @@ const IconChevron = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-function MarkdownView({ text, bg }) {
-  const html = useMemo(() => {
-    try {
-      return DOMPurify.sanitize(marked.parse(text || ""));
-    } catch {
-      return "";
-    }
-  }, [text]);
-  return (
-    <div
-      className="prose prose-sm max-w-none break-words rounded-md p-3 sm:p-4"
-      style={{ background: bg }}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
-}
-
+/* ========= Scene Card ========= */
+type SceneCardProps = {
+  scene: Scene;
+  onChange: (next: Scene) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  draggableProps?: HTMLAttributes<HTMLDivElement>;
+};
 function SceneCard({
   scene,
   onChange,
   onDelete,
   onDuplicate,
   draggableProps = {},
-}) {
+}: SceneCardProps) {
   const [open, setOpen] = useState(true);
   const [editing, setEditing] = useState(false);
-  const refTitle = useRef(null);
+  const refTitle = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (editing && refTitle.current) {
       refTitle.current.focus();
       refTitle.current.select?.();
     }
   }, [editing]);
-  const update = (patch) => onChange({ ...scene, ...patch });
+
+  const update = (patch: Partial<Scene>) => onChange({ ...scene, ...patch });
 
   return (
     <motion.div
@@ -376,7 +409,9 @@ function SceneCard({
               ref={refTitle}
               className="w-full rounded-md border px-3 py-2 text-lg font-semibold focus:outline-none focus:ring"
               value={scene.title}
-              onChange={(e) => update({ title: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                update({ title: e.target.value })
+              }
             />
           ) : (
             <button
@@ -401,8 +436,8 @@ function SceneCard({
             <select
               className="rounded-md border px-2 py-1 text-sm"
               value={scene.act}
-              onChange={(e) =>
-                update({ act: /** @type {Act} */ e.target.value })
+              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                update({ act: e.target.value as Act })
               }
             >
               {Acts.map((a) => (
@@ -456,7 +491,7 @@ function SceneCard({
                   background: c,
                   borderColor: "#e5e7eb",
                   outline: scene.color === c ? "2px solid #111827" : "none",
-                }}
+                } as CSSProperties}
               />
             ))}
           </div>
@@ -465,7 +500,9 @@ function SceneCard({
             min={0}
             className="ml-auto w-24 rounded-md border px-2 py-1 text-sm"
             value={scene.duration}
-            onChange={(e) => update({ duration: Number(e.target.value) || 0 })}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              update({ duration: Number(e.target.value) || 0 })
+            }
           />
           <span className="text-xs text-gray-500">分</span>
         </div>
@@ -478,8 +515,10 @@ function SceneCard({
                 rows={4}
                 placeholder="シーンの概要（**太字**、*斜体*、- 箇条書き などMarkdown可）"
                 value={scene.summary}
-                onChange={(e) => update({ summary: e.target.value })}
-                style={{ background: scene.color }}
+                onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                  update({ summary: e.target.value })
+                }
+                style={{ background: scene.color } as CSSProperties}
               />
             ) : (
               <MarkdownView text={scene.summary} bg={scene.color} />
@@ -492,7 +531,9 @@ function SceneCard({
             <input
               className="w-full rounded-md border p-3"
               value={scene.tags.join(", ")}
-              onChange={(e) => update({ tags: splitCSV(e.target.value) })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                update({ tags: splitCSV(e.target.value) })
+              }
             />
             <div className="mt-2 flex flex-wrap gap-1.5">
               {scene.tags.filter(Boolean).map((t) => (
@@ -512,7 +553,9 @@ function SceneCard({
             <input
               className="w-full rounded-md border p-3"
               value={scene.characters.join(", ")}
-              onChange={(e) => update({ characters: splitCSV(e.target.value) })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                update({ characters: splitCSV(e.target.value) })
+              }
             />
           </div>
           <div className="sm:col-span-2">
@@ -523,7 +566,9 @@ function SceneCard({
               className="w-full rounded-md border p-3 font-mono"
               rows={3}
               value={scene.notes}
-              onChange={(e) => update({ notes: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                update({ notes: e.target.value })
+              }
             />
             <div className="mt-2 text-xs text-gray-500">プレビュー:</div>
             <MarkdownView text={scene.notes} bg="#0000" />
@@ -534,13 +579,20 @@ function SceneCard({
   );
 }
 
-function splitCSV(v) {
-  return v
-    .split(/,|、/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+/* ========= Utils ========= */
+function splitCSV(v: string): string[] {
+  return v.split(/,|、/).map((s) => s.trim()).filter(Boolean);
 }
 
+/* ========= Button ========= */
+type BtnProps = {
+  icon?: React.ReactNode;
+  children?: React.ReactNode;
+  onClick?: () => void;
+  as?: "button" | "label";
+  inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
+  className?: string;
+};
 const Btn = ({
   icon,
   children,
@@ -548,7 +600,7 @@ const Btn = ({
   as = "button",
   inputProps = {},
   className = "",
-}) => {
+}: BtnProps) => {
   if (as === "label") {
     return (
       <label
@@ -571,8 +623,19 @@ const Btn = ({
   );
 };
 
-/* ========== Sidebar: Simple List of Scenes ========== */
-function SidebarList({ scenes, onPick, onClear, selectedId }) {
+/* ========= Sidebar ========= */
+type SidebarListProps = {
+  scenes: Scene[];
+  onPick: (s: Scene) => void;
+  onClear: () => void;
+  selectedId: string;
+};
+function SidebarList({
+  scenes,
+  onPick,
+  onClear,
+  selectedId,
+}: SidebarListProps) {
   return (
     <aside className="sticky top-[88px] hidden h-[calc(100vh-140px)] overflow-auto rounded-xl border bg-white/70 p-2 lg:block">
       <div className="mb-2 flex items-center justify-between">
@@ -598,7 +661,7 @@ function SidebarList({ scenes, onPick, onClear, selectedId }) {
               <div className="flex items-center gap-2">
                 <span
                   className="inline-flex h-2 w-2 rounded-full"
-                  style={{ background: s.color }}
+                  style={{ background: s.color } as CSSProperties}
                 />
                 <span className="truncate">
                   {i + 1}. {s.title || "無題"}
@@ -616,14 +679,24 @@ function SidebarList({ scenes, onPick, onClear, selectedId }) {
   );
 }
 
-/* ========== Memo Board (right) ========== */
-function MemoCard({ memo, onChange, onDelete }) {
-  const [open, setOpen] = useState(memo.open);
+/* ========= Memo Board ========= */
+type MemoCardProps = {
+  memo: MemoT;
+  onChange: (m: MemoT) => void;
+  onDelete: () => void;
+};
+function MemoCard({ memo, onChange, onDelete }: MemoCardProps) {
+  const [open, setOpen] = useState<boolean>(memo.open);
   useEffect(() => {
     onChange({ ...memo, open }); /* persist open state */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
   return (
-    <motion.div layout className="rounded-2xl border bg-white/80 p-3 shadow-sm">
+    <motion.div
+      layout
+      className="rounded-2xl border bg-white/80 p-3 shadow-sm"
+    >
       <div className="flex items-center gap-2">
         <button
           className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-gray-50"
@@ -656,14 +729,18 @@ function MemoCard({ memo, onChange, onDelete }) {
           className="mt-2 w-full rounded-md border p-2 text-sm font-mono"
           rows={4}
           value={memo.body}
-          onChange={(e) => onChange({ ...memo, body: e.target.value })}
+          onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+            onChange({ ...memo, body: e.target.value })
+          }
           placeholder="メモを書いてください（Markdown可）"
         />
         <div className="mt-2 text-[11px] text-gray-500">プレビュー</div>
         <div className="prose prose-sm max-w-none rounded-md border bg-white p-2">
           <div
             dangerouslySetInnerHTML={{
-              __html: DOMPurify.sanitize(marked.parse(memo.body || "")),
+              __html: DOMPurify.sanitize(
+                marked.parse(memo.body || "") as string
+              ),
             }}
           />
         </div>
@@ -673,10 +750,10 @@ function MemoCard({ memo, onChange, onDelete }) {
 }
 
 function MemoBoard() {
-  const [memos, setMemos] = useState(() => {
+  const [memos, setMemos] = useState<MemoT[]>(() => {
     try {
       const raw = localStorage.getItem(MEMO_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) return JSON.parse(raw) as MemoT[];
     } catch {}
     return DEFAULT_MEMOS;
   });
@@ -685,14 +762,15 @@ function MemoBoard() {
       localStorage.setItem(MEMO_KEY, JSON.stringify(memos));
     } catch {}
   }, [memos]);
+
   const add = () =>
     setMemos((prev) => [
       { id: uid(), title: "新規メモ", body: "", open: true },
       ...prev,
     ]);
-  const change = (m) =>
+  const change = (m: MemoT) =>
     setMemos((prev) => prev.map((x) => (x.id === m.id ? m : x)));
-  const del = (id) => setMemos((prev) => prev.filter((x) => x.id !== id));
+  const del = (id: string) => setMemos((prev) => prev.filter((x) => x.id !== id));
 
   return (
     <aside className="sticky top-[88px] hidden h-[calc(100vh-140px)] overflow-auto rounded-xl border bg-white/50 p-2 lg:block">
@@ -708,7 +786,7 @@ function MemoBoard() {
           追加
         </button>
       </div>
-      <Reorder.Group
+      <Reorder.Group<MemoT>
         axis="y"
         values={memos}
         onReorder={setMemos}
@@ -724,20 +802,19 @@ function MemoBoard() {
   );
 }
 
+/* ========= App ========= */
 export default function App() {
-  const [scenes, setScenes] = useState(() => {
+  const [scenes, setScenes] = useState<Scene[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) return JSON.parse(raw) as Scene[];
     } catch {}
     return DEFAULT_SCENES;
   });
-  const [q, setQ] = useState("");
-  const [tag, setTag] = useState("");
-  const [view, setView] = useState(
-    /** @type {"KANBAN"|"LIST"|"TIMELINE"} */ "KANBAN"
-  );
-  const [pickedId, setPickedId] = useState("");
+  const [q, setQ] = useState<string>("");
+  const [tag, setTag] = useState<string>("");
+  const [view, setView] = useState<"KANBAN" | "LIST" | "TIMELINE">("KANBAN");
+  const [pickedId, setPickedId] = useState<string>("");
 
   useEffect(() => {
     try {
@@ -746,10 +823,10 @@ export default function App() {
   }, [scenes]);
 
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const filterFn = (s /** @type {Scene} */) => {
-    const hay = `${s.title} ${s.summary} ${s.tags.join(
+  const filterFn = (s: Scene) => {
+    const hay = `${s.title} ${s.summary} ${s.tags.join(" ")} ${s.characters.join(
       " "
-    )} ${s.characters.join(" ")}`.toLowerCase();
+    )}`.toLowerCase();
     const okQ = words.every((w) => hay.includes(w));
     const okTag = tag
       ? s.tags.map((t) => t.toLowerCase()).includes(tag.toLowerCase())
@@ -782,15 +859,15 @@ export default function App() {
       },
       ...prev,
     ]);
-  const replaceScene = (s) =>
+  const replaceScene = (s: Scene) =>
     setScenes((prev) => prev.map((x) => (x.id === s.id ? s : x)));
-  const deleteScene = (id) =>
+  const deleteScene = (id: string) =>
     setScenes((prev) => prev.filter((s) => s.id !== id));
-  const duplicateScene = (id) =>
+  const duplicateScene = (id: string) =>
     setScenes((prev) => {
       const i = prev.findIndex((s) => s.id === id);
       if (i < 0) return prev;
-      const copy = { ...prev[i], id: uid(), title: prev[i].title + " コピー" };
+      const copy: Scene = { ...prev[i], id: uid(), title: prev[i].title + " コピー" };
       const out = [...prev];
       out.splice(i + 1, 0, copy);
       return out;
@@ -811,7 +888,7 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const onImport = async (file) => {
+  const onImport = async (file?: File) => {
     if (!file) return;
     try {
       const text = await file.text();
@@ -829,8 +906,8 @@ export default function App() {
       alert("読み込みに失敗しました");
     }
   };
-  function upgradeArray(arr) {
-    return arr.map((s) => ({ act: s.act || "ACT1", ...s }));
+  function upgradeArray(arr: any[]): Scene[] {
+    return arr.map((s) => ({ act: (s.act as Act) || "ACT1", ...s })) as Scene[];
   }
   const clearAll = () => {
     if (confirm("全シーンを削除しますか？")) setScenes([]);
@@ -839,21 +916,17 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
       <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w=[1760px] flex-wrap items-center gap-3 px-4 py-5 sm:px-6 sm:py-7">
+        <div className="mx-auto flex max-w-[1760px] flex-wrap items-center gap-3 px-4 py-5 sm:px-6 sm:py-7">
           <h1 className="text-2xl font-bold tracking-tight">
             シナリオエディター（カンバン＋タイムライン＋Markdown｜サイドバー＆メモ）
           </h1>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Btn onClick={addScene} icon={<IconPlus />}>
-              シーン追加
-            </Btn>
-            <Btn onClick={exportJSON} icon={<IconDownload />}>
-              エクスポート
-            </Btn>
+            <Btn onClick={addScene} icon={<IconPlus />}>シーン追加</Btn>
+            <Btn onClick={exportJSON} icon={<IconDownload />}>エクスポート</Btn>
             <Btn
               as="label"
               icon={<IconUpload />}
-              inputProps={{ onChange: (e) => onImport(e.target.files?.[0]) }}
+              inputProps={{ onChange: (e) => onImport(e.target.files?.[0] || undefined) }}
             >
               インポート
             </Btn>
@@ -883,15 +956,30 @@ export default function App() {
               ))}
             </select>
             <div className="flex gap-2 sm:ml-auto">
-              <button onClick={() => setView("KANBAN")} className={`rounded-xl border px-3 py-2 shadow-sm ${view === "KANBAN" ? "bg-gray-50" : ""}`}>
-<IconKanban style={{ marginRight: 6 }} /> カンバン
-</button>
-              <button onClick={() => setView("LIST")} className={`rounded-xl border px-3 py-2 shadow-sm ${view === "LIST" ? "bg-gray-50" : ""}`}>
-<IconList style={{ marginRight: 6 }} /> リスト
-</button>
-              <button onClick={() => setView("TIMELINE")} className={`rounded-xl border px-3 py-2 shadow-sm ${view === "TIMELINE" ? "bg-gray-50" : ""}`}>
-<IconTimeline style={{ marginRight: 6 }} /> タイムライン
-</button>
+              <button
+                onClick={() => setView("KANBAN")}
+                className={`inline-flex items-center gap-1 rounded-xl border px-3 py-2 shadow-sm ${
+                  view === "KANBAN" ? "bg-gray-50" : ""
+                }`}
+              >
+                <IconKanban /> カンバン
+              </button>
+              <button
+                onClick={() => setView("LIST")}
+                className={`inline-flex items-center gap-1 rounded-xl border px-3 py-2 shadow-sm ${
+                  view === "LIST" ? "bg-gray-50" : ""
+                }`}
+              >
+                <IconList /> リスト
+              </button>
+              <button
+                onClick={() => setView("TIMELINE")}
+                className={`inline-flex items-center gap-1 rounded-xl border px-3 py-2 shadow-sm ${
+                  view === "TIMELINE" ? "bg-gray-50" : ""
+                }`}
+              >
+                <IconTimeline /> タイムライン
+              </button>
             </div>
             <div className="text-sm text-gray-500 sm:ml-auto">
               合計 {scenes.length} シーン / 想定 {totalMinutes} 分
@@ -925,8 +1013,8 @@ export default function App() {
                     const col = prev.filter((s) => s.act === act);
                     const [item] = col.splice(from, 1);
                     col.splice(to, 0, item);
-                    const rebuilt = [];
-                    const byId = new Map(col.map((s) => [s.id, s]));
+                    const rebuilt: Scene[] = [];
+                    const byId = new Map(col.map((s) => [s.id, s] as const));
                     for (const s of prev) {
                       if (s.act !== act) {
                         rebuilt.push(s);
@@ -972,37 +1060,47 @@ export default function App() {
   );
 }
 
+/* ========= Kanban ========= */
+type KanbanProps = {
+  scenes: Scene[];
+  onChangeScene: (next: Scene) => void;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  moveWithinAct: (act: Act, from: number, to: number) => void;
+};
 function Kanban({
   scenes,
   onChangeScene,
   onDelete,
   onDuplicate,
   moveWithinAct,
-}) {
+}: KanbanProps) {
   const cols = useMemo(
-    () =>
-      Acts.map((a) => ({ act: a, items: scenes.filter((s) => s.act === a) })),
+    () => Acts.map((a) => ({ act: a, items: scenes.filter((s) => s.act === a) })),
     [scenes]
   );
-  const onDragStart = (e, sceneId) => {
+
+  const onDragStart = (
+    e: React.DragEvent<HTMLDivElement>,
+    sceneId: string
+  ) => {
     e.dataTransfer.setData("text/plain", sceneId);
     e.dataTransfer.effectAllowed = "move";
   };
-  const onDropToCol = (e, act) => {
+  const onDropToCol = (e: React.DragEvent<HTMLDivElement>, act: Act) => {
     e.preventDefault();
     const id = e.dataTransfer.getData("text/plain");
     if (!id) return;
     onChangeSceneById(id, { act });
   };
-  const onDragOver = (e) => {
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
-  const onChangeSceneById = (id, patch) => {
-    onChangeScene((prev) => ({
-      ...prev,
-      ...patch,
-      id: prev.id === id ? id : prev.id,
-    }));
+
+  const onChangeSceneById = (id: string, patch: Partial<Scene>) => {
+    const target = scenes.find((s) => s.id === id);
+    if (!target) return;
+    onChangeScene({ ...target, ...patch });
   };
 
   return (
@@ -1017,8 +1115,7 @@ function Kanban({
               {act}
             </h2>
             <span className="text-xs text-gray-500">
-              {items.length} 件 /{" "}
-              {items.reduce((a, b) => a + (b.duration || 0), 0)} 分
+              {items.length} 件 / {items.reduce((a, b) => a + (b.duration || 0), 0)} 分
             </span>
           </header>
           <div
@@ -1042,20 +1139,14 @@ function Kanban({
                 <div className="mt-3 mb-1.5 flex justify-end gap-2">
                   <button
                     className="rounded-md border px-2 py-1 text-xs"
-                    onClick={() =>
-                      moveWithinAct(act, idx, Math.max(0, idx - 1))
-                    }
+                    onClick={() => moveWithinAct(act, idx, Math.max(0, idx - 1))}
                   >
                     ← 上へ
                   </button>
                   <button
                     className="rounded-md border px-2 py-1 text-xs"
                     onClick={() =>
-                      moveWithinAct(
-                        act,
-                        idx,
-                        Math.min(items.length - 1, idx + 1)
-                      )
+                      moveWithinAct(act, idx, Math.min(items.length - 1, idx + 1))
                     }
                   >
                     下へ →
@@ -1070,7 +1161,8 @@ function Kanban({
   );
 }
 
-function TimelineView({ scenes }) {
+/* ========= Timeline ========= */
+function TimelineView({ scenes }: { scenes: Scene[] }) {
   const total = scenes.reduce((a, b) => a + (Number(b.duration) || 0), 0);
   const ordered = useMemo(
     () => Acts.flatMap((a) => scenes.filter((s) => s.act === a)),
@@ -1120,10 +1212,12 @@ function TimelineView({ scenes }) {
               <div
                 key={b.id}
                 className="flex items-center justify-center border-r text-xs"
-                style={{
-                  width: `${(b.dur / Math.max(1, total)) * 100}%`,
-                  background: b.color,
-                }}
+                style={
+                  {
+                    width: `${(b.dur / Math.max(1, total)) * 100}%`,
+                    background: b.color,
+                  } as CSSProperties
+                }
                 title={`${b.title} (${b.dur}分)`}
               >
                 <span className="truncate px-2">{b.title}</span>
@@ -1142,7 +1236,7 @@ function TimelineView({ scenes }) {
             <div className="flex items-center gap-2">
               <span
                 className="inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold"
-                style={{ background: b.color }}
+                style={{ background: b.color } as CSSProperties}
               >
                 {b.act}
               </span>
